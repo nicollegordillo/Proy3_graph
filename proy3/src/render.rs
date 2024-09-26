@@ -1,22 +1,26 @@
-use crate::{color::Color, framebuffer::Framebuffer, ray_intersect::{Intersect, RayIntersect}};
-use nalgebra_glm::{Vec3, normalize};
+use crate::{camera::Camera, color::Color, framebuffer::Framebuffer, ray_intersect::{Intersect, RayIntersect}};
+use nalgebra_glm::Vec3;
 
-pub fn render(framebuffer: &mut Framebuffer, objects: &[Box<dyn RayIntersect>]) {
+pub fn render(framebuffer: &mut Framebuffer, camera: &Camera, objects: &[Box<dyn RayIntersect>]) {
     let width = framebuffer.width as f32;
     let height = framebuffer.height as f32;
-    let aspect_ratio = width / height;
 
     for y in 0..framebuffer.height {
         for x in 0..framebuffer.width {
-            let screen_x = (2.0 * x as f32) / width - 1.0;
-            let screen_y = -(2.0 * y as f32) / height + 1.0;
-            let screen_x = screen_x * aspect_ratio;
+            // Normalized device coordinates (NDC) from -1 to 1
+            let u = (2.0 * (x as f32 + 0.5) / width - 1.0);
+            let v = (1.0 - 2.0 * (y as f32 + 0.5) / height);
 
-            let ray_direction = normalize(&Vec3::new(screen_x, screen_y, -1.0));
+            // Use the camera to generate the ray direction for this pixel
+            let ray_direction = camera.generate_ray(u, v);
 
-            let pixel_color = cast_ray(&Vec3::new(0.0, 0.0, 0.0), &ray_direction, objects);
+            // The ray originates from the camera's position
+            let ray_origin = camera.eye;
 
-            // Convert Color to u32 and set the pixel color
+            // Trace the ray and get the pixel color
+            let pixel_color = cast_ray(&ray_origin, &ray_direction, objects);
+
+            // Convert the Color to u32 and set the pixel color
             framebuffer.point(x, y, pixel_color.to_u32());
         }
     }

@@ -16,7 +16,7 @@ impl Framebuffer {
     }
 
     pub fn set_current_color(&mut self, color: u32) {
-        // Implementation is now part of `point()`
+        // Implementation is now part of point()
     }
 
     pub fn point(&mut self, x: usize, y: usize, color: u32) {
