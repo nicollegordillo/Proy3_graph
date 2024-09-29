@@ -30,9 +30,17 @@ fn main() {
 
     // Light setup
     let light = Light {
-        position: Vec3::new(0.0, 0.0, -2.0),
+        position: Vec3::new(0.0, 0.0, -4.0),
         color: Color::new(255, 255, 255),
         intensity: 1.0,
+    };
+
+    let green_material = Material {
+        diffuse: Color::new(0, 255, 0),
+        albedo: 0.9,
+        specular_exponent: 50.0,
+        refraction_index: Some(1.5),
+        texture: None,
     };
 
     // Objects (cubes)
@@ -48,7 +56,27 @@ fn main() {
                 texture: None,
             },
         },
+        Cube {
+            center: Vec3::new(-2.0, 0.0, 0.0),
+            size: 2.0,
+            material: Material {
+                diffuse: Color::new(255, 100, 250),
+                albedo: 0.8,
+                specular_exponent: 50.0,
+                refraction_index: None,
+                texture: None,
+            },
+        },
+        Cube {
+            center: Vec3::new(2.0, 0.0, 0.0),
+            size: 2.0,
+            material: green_material,
+        },
     ];
+
+    /*for object in &objects {
+        object.print_corner_coordinates();
+    }*/
 
     // Create the window
     let mut window = Window::new("Ray Tracing - Press ESC to exit", width, height, WindowOptions::default())
@@ -56,7 +84,7 @@ fn main() {
 
     // Camera movement variables
     let move_speed = 0.5;
-    let rotate_speed = 0.1;
+    let rotate_speed = 1.5;
 
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
