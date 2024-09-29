@@ -1,82 +1,57 @@
 use crate::color::Color;
-use crate::framebuffer::Framebuffer;
 use crate::light::Light;
-use crate::ray_intersect::{Intersect, RayIntersect};
-use nalgebra_glm::{Vec3, normalize};
+use crate::ray_intersect::{RayIntersect, Intersect};
 use crate::object::Cube;
+use nalgebra_glm::Vec3;
 
-pub fn render_scene(ray_origin: Vec3, ray_direction: Vec3, framebuffer: &mut Framebuffer, objects: &[Cube], light: &Light) -> Option<Intersect> {
-    let mut closest_intersect: Option<Intersect> = None;
-
-    for object in objects {
-        if let Some(intersect) = object.ray_intersect(&ray_origin, &ray_direction) {
-            // Use as_ref() to avoid moving closest_intersect
-            if closest_intersect.is_none() || intersect.distance < closest_intersect.as_ref().map_or(f32::MAX, |ci| ci.distance) {
-                closest_intersect = Some(intersect);
-            }
-        }
-    }
-
-    closest_intersect
-}
-
-fn find_closest_intersect(ray_origin: &Vec3, ray_direction: &Vec3, objects: &[Box<dyn RayIntersect>]) -> Option<Intersect> {
-    let mut closest_intersect: Option<Intersect> = None;
-
-    for object in objects {
-        if let Some(intersect) = object.ray_intersect(ray_origin, ray_direction) {
-            // Use as_ref() to avoid moving closest_intersect
-            if closest_intersect.is_none() || intersect.distance < closest_intersect.as_ref().map_or(f32::MAX, |ci| ci.distance) {
-                closest_intersect = Some(intersect);
-            }
-        }
-    }
-
-    closest_intersect
-}
-
-fn cast_ray(ray_origin: &Vec3, ray_direction: &Vec3, objects: &[Box<dyn RayIntersect>], light: &Light, depth: u32) -> Color {
-    if depth > 4 {
-        return Color::new(0, 0, 0);
-    }
-
-    if let Some(closest_intersect) = find_closest_intersect(ray_origin, ray_direction, objects) {
-        let mut color = closest_intersect.material.diffuse;
-
+pub fn render_scene(ray_origin: Vec3, ray_direction: Vec3, objects: &[Cube], light: &Light) -> Color {
+    if let Some(closest_intersect) = find_closest_intersect(&ray_origin, &ray_direction, objects) {
+        let material = &closest_intersect.material;
         let light_dir = (light.position - closest_intersect.point).normalize();
         let view_dir = (ray_origin - closest_intersect.point).normalize();
         let reflect_dir = reflect(&(-light_dir), &closest_intersect.normal);
 
-        // Calculate diffuse and specular components
-        let diffuse = light.intensity * f32::max(0.0, closest_intersect.normal.dot(&light_dir));
-        let specular = light.intensity * f32::powf(f32::max(0.0, reflect_dir.dot(&view_dir)), closest_intersect.material.specular_exponent);
+        // Phong shading
+        let diffuse = light.intensity * closest_intersect.normal.dot(&light_dir).max(0.0);
+        let specular = light.intensity * reflect_dir.dot(&view_dir).max(0.0).powf(material.specular_exponent);
 
-        // Apply texture if present
-        if let Some(texture) = closest_intersect.material.texture {
-            color = texture.get_color(closest_intersect.u, closest_intersect.v);
+        // Apply color
+        let color = material.diffuse * material.albedo * diffuse + material.diffuse * specular;
+
+        // Shadow check
+        if is_in_shadow(&closest_intersect, light, objects) {
+            //println!("Object is in shadow");
+            return color * 0.3; // Darken color in shadow
         }
 
-        // Calculate final color with Phong model
-        color = color * closest_intersect.material.albedo * diffuse + color * specular;
-
-        // Shadow ray
-        let shadow_ray_origin = closest_intersect.point + closest_intersect.normal * 0.001;
-        let shadow_ray_dir = light_dir;
-        if let Some(shadow_intersect) = find_closest_intersect(&shadow_ray_origin, &shadow_ray_dir, objects) {
-            if shadow_intersect.distance < (light.position - closest_intersect.point).magnitude() {
-                color = color * 0.3; // Darken the color if in shadow
-            }
-        }
-
-        return color;
+        color
+    } else {
+        //println!("No intersection found");
+        Color::new(100, 100, 255) // Background color
     }
-
-    // Return background color
-    Color::new(100, 100, 255) // Background sky color
 }
 
+fn find_closest_intersect(ray_origin: &Vec3, ray_direction: &Vec3, objects: &[Cube]) -> Option<Intersect> {
+    objects.iter()
+        .filter_map(|object| {
+            let intersect = object.ray_intersect(ray_origin, ray_direction);
+            if intersect.is_some() {
+                //println!("Intersection found: {:?}", intersect);
+            }
+            intersect
+        })
+        .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap())
+}
 
 fn reflect(direction: &Vec3, normal: &Vec3) -> Vec3 {
     direction - normal * 2.0 * direction.dot(normal)
 }
 
+fn is_in_shadow(intersect: &Intersect, light: &Light, objects: &[Cube]) -> bool {
+    let shadow_origin = intersect.point + intersect.normal * 0.001;
+    let light_dir = (light.position - intersect.point).normalize();
+
+    objects.iter()
+        .filter_map(|object| object.ray_intersect(&shadow_origin, &light_dir))
+        .any(|shadow_intersect| shadow_intersect.distance < (light.position - intersect.point).magnitude())
+}

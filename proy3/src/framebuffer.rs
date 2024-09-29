@@ -34,4 +34,8 @@ impl Framebuffer {
             (0xff << 24) | ((color.r as u32) << 16) | ((color.g as u32) << 8) | (color.b as u32) // Ensure casting to u32
         }).collect()
     }
+
+    pub fn to_u32_buffer(&self) -> Vec<u32> {
+        self.buffer.iter().map(|color| color.to_u32()).collect()
+    }
 }

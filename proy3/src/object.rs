@@ -14,69 +14,66 @@ impl RayIntersect for Cube {
         let min = self.center - vec3(half_size, half_size, half_size);
         let max = self.center + vec3(half_size, half_size, half_size);
 
-        // Calculate t_min and t_max for ray-box intersection
-        let t_min = (min - ray_origin).component_div(ray_direction); // Adjusted for potential glm usage
-        let t_max = (max - ray_origin).component_div(ray_direction); // Adjusted for potential glm usage
+        let epsilon = 1e-6;
+        let inv_dir = Vec3::new(1.0 / ray_direction.x, 1.0 / ray_direction.y, 1.0 / ray_direction.z);
 
-        // Find the maximum of t_min and the minimum of t_max
-        let t_near = t_min[0].max(t_min[1]).max(t_min[2]);
-        let t_far = t_max[0].min(t_max[1]).min(t_max[2]);
+
+        // Calculate the potential intersections
+        let t_min = (min - ray_origin).component_mul(&inv_dir);
+        let t_max = (max - ray_origin).component_mul(&inv_dir);
+
+        // Find the largest t_min and smallest t_max
+        let t_near = t_min.x.max(t_min.y).max(t_min.z);
+        let t_far = t_max.x.min(t_max.y).min(t_max.z);
 
         if t_near > t_far || t_far < 0.0 {
             return None; // No intersection
         }
 
-        // Calculate hit point
+        // Determine hit point and normal
         let hit_point = ray_origin + ray_direction * t_near;
 
-        // Determine the normal based on the face hit
-        let normal = if t_near == t_min[0] {
-            vec3(-1.0, 0.0, 0.0) // hit the left face
-        } else if t_near == t_min[1] {
-            vec3(0.0, -1.0, 0.0) // hit the bottom face
-        } else if t_near == t_min[2] {
-            vec3(0.0, 0.0, -1.0) // hit the back face
-        } else if t_near == t_max[0] {
-            vec3(1.0, 0.0, 0.0) // hit the right face
-        } else if t_near == t_max[1] {
-            vec3(0.0, 1.0, 0.0) // hit the top face
-        } else {
-            vec3(0.0, 0.0, 1.0) // hit the front face
-        };
+        // Calculate the normal
+        let normal = calculate_normal(&hit_point, &min, &max);
+        //println!("Hit normal: {:?}", normal);
 
-        // Calculate UV coordinates
-        let (u, v) = calculate_cube_uv(&normal);
+        // Debug output
+        //println!("Hit point: {:?}", hit_point);
+        //println!("Normal: {:?}", normal);
 
         Some(Intersect {
             distance: t_near,
             point: hit_point,
             normal,
             material: self.material.clone(),
-            u,
-            v,
+            u: 0.0,
+            v: 0.0,
         })
     }
 }
 
-// Helper function to calculate UV coordinates for cube faces
-fn calculate_cube_uv(normal: &Vec3) -> (f32, f32) {
-    let (u, v) = if normal.x.abs() > normal.y.abs() && normal.x.abs() > normal.z.abs() {
-        // x is the dominant axis
-        let u = (normal.z / normal.x + 1.0) * 0.5;
-        let v = (normal.y / normal.x + 1.0) * 0.5;
-        (u, v)
-    } else if normal.y.abs() > normal.z.abs() {
-        // y is the dominant axis
-        let u = (normal.x / normal.y + 1.0) * 0.5;
-        let v = (normal.z / normal.y + 1.0) * 0.5;
-        (u, v)
+
+fn calculate_normal(hit_point: &Vec3, min: &Vec3, max: &Vec3) -> Vec3 {
+    let center = (min + max) * 0.5;
+    let diff = hit_point - center;
+
+    if diff.x.abs() > diff.y.abs() && diff.x.abs() > diff.z.abs() {
+        if diff.x > 0.0 {
+            vec3(1.0, 0.0, 0.0)
+        } else {
+            vec3(-1.0, 0.0, 0.0)
+        }
+    } else if diff.y.abs() > diff.x.abs() && diff.y.abs() > diff.z.abs() {
+        if diff.y > 0.0 {
+            vec3(0.0, 1.0, 0.0)
+        } else {
+            vec3(0.0, -1.0, 0.0)
+        }
     } else {
-        // z is the dominant axis
-        let u = (normal.x / normal.z + 1.0) * 0.5;
-        let v = (normal.y / normal.z + 1.0) * 0.5;
-        (u, v)
-    };
-
-    (u, v)
+        if diff.z > 0.0 {
+            vec3(0.0, 0.0, 1.0)
+        } else {
+            vec3(0.0, 0.0, -1.0)
+        }
+    }
 }
-
