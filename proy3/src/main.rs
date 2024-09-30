@@ -43,34 +43,255 @@ fn main() {
         texture: None,
     };
 
+    let snow_material = Material {
+        diffuse: Color::new(255, 255, 255),  // White for snow
+        albedo: 0.85,
+        specular_exponent: 10.0,
+        refraction_index: None,
+        texture: None,
+    };
+
+    let ice_material = Material {
+        diffuse: Color::new(0, 100, 255),  // Blue for ice
+        albedo: 0.6,
+        specular_exponent: 100.0,
+        refraction_index: Some(1.3),
+        texture: None,
+    };
+    let leaf_material = Material {
+        diffuse: Color::new(102, 204, 0),  // White for snow
+        albedo: 0.85,
+        specular_exponent: 10.0,
+        refraction_index: None,
+        texture: None,
+    };
+
+    let birch_material = Material {
+        diffuse: Color::new(255, 255, 204),  // Blue for ice
+        albedo: 0.6,
+        specular_exponent: 100.0,
+        refraction_index: Some(1.3),
+        texture: None,
+    };
+    let furnace_material = Material {
+        diffuse: Color::new(160, 160, 160),  // Blue for ice
+        albedo: 0.6,
+        specular_exponent: 100.0,
+        refraction_index: Some(1.3),
+        texture: None,
+    };
+
     // Objects (cubes)
     let objects = vec![
         Cube {
-            center: Vec3::new(0.0, 0.0, 0.0),
+            center: Vec3::new(0.0, 2.0, 8.0),
             size: 2.0,
-            material: Material {
-                diffuse: Color::new(255, 0, 0),
-                albedo: 0.9,
-                specular_exponent: 50.0,
-                refraction_index: None,
-                texture: None,
-            },
+            material: furnace_material.clone(),
         },
         Cube {
-            center: Vec3::new(-2.0, 0.0, 0.0),
+            center: Vec3::new(8.0, 2.0, 6.0),
             size: 2.0,
-            material: Material {
-                diffuse: Color::new(255, 100, 250),
-                albedo: 0.8,
-                specular_exponent: 50.0,
-                refraction_index: None,
-                texture: None,
-            },
+            material: birch_material.clone(),
         },
         Cube {
-            center: Vec3::new(2.0, 0.0, 0.0),
+            center: Vec3::new(8.0, 4.0, 6.0),
             size: 2.0,
-            material: green_material,
+            material: birch_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 6.0, 6.0),
+            size: 2.0,
+            material: birch_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 8.0, 6.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 8.0, 4.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 8.0, 4.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 8.0, 4.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 8.0, 6.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 8.0, 6.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 8.0, 8.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 8.0, 8.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 8.0, 8.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 10.0, 6.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 10.0, 4.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 10.0, 6.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 10.0, 6.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 10.0, 8.0),
+            size: 2.0,
+            material: leaf_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(0.0, 0.0, 4.0),
+            size: 2.0,
+            material: ice_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(2.0, 0.0, 4.0),
+            size: 2.0,
+            material: ice_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(4.0, 0.0, 4.0),
+            size: 2.0,
+            material: ice_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(0.0, 0.0, 2.0),
+            size: 2.0,
+            material: ice_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(2.0, 0.0, 2.0),
+            size: 2.0,
+            material: ice_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(4.0, 0.0, 2.0),
+            size: 2.0,
+            material: ice_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 0.0, 2.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 0.0, 2.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 0.0, 2.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 0.0, 4.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 0.0, 4.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 0.0, 4.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(0.0, 0.0, 6.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(2.0, 0.0, 6.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(4.0, 0.0, 6.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 0.0, 6.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 0.0, 6.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 0.0, 6.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(0.0, 0.0, 8.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(2.0, 0.0, 8.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(4.0, 0.0, 8.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(6.0, 0.0, 8.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(8.0, 0.0, 8.0),
+            size: 2.0,
+            material: snow_material.clone(),
+        },
+        Cube {
+            center: Vec3::new(10.0, 0.0, 8.0),
+            size: 2.0,
+            material: snow_material.clone(),
         },
     ];
 
