@@ -1,57 +1,38 @@
-use crate::color::Color;
-use crate::light::Light;
-use crate::ray_intersect::{RayIntersect, Intersect};
-use crate::object::Cube;
+use crate::Framebuffer;
+use crate::Cube;
+use crate::Camera;
+use crate::Light;
+use std::{f32::consts::PI};
+use rayon::prelude::*;
+use crate::cast_ray;
 use nalgebra_glm::Vec3;
 
-pub fn render_scene(ray_origin: Vec3, ray_direction: Vec3, objects: &[Cube], light: &Light) -> Color {
-    if let Some(closest_intersect) = find_closest_intersect(&ray_origin, &ray_direction, objects) {
-        let material = &closest_intersect.material;
-        let light_dir = (light.position - closest_intersect.point).normalize();
-        let view_dir = (ray_origin - closest_intersect.point).normalize();
-        let reflect_dir = reflect(&(-light_dir), &closest_intersect.normal);
+/// Renders the scene to the framebuffer.
+pub fn render(framebuffer: &mut Framebuffer, objects: &[Cube], camera: &Camera, lights: &[Light], daylight: &Light) {
+    let width = framebuffer.width as f32;
+    let height = framebuffer.height as f32;
+    let aspect_ratio = width / height;
+    let fov = PI / 3.0; // Field of view
+    let perspective_scale = (fov / 2.0).tan(); // Perspective scale based on FOV
 
-        // Phong shading
-        let diffuse = light.intensity * closest_intersect.normal.dot(&light_dir).max(0.0);
-        let specular = light.intensity * reflect_dir.dot(&view_dir).max(0.0).powf(material.specular_exponent);
+    framebuffer.buffer.par_chunks_mut(framebuffer.width as usize).enumerate().for_each(|(y, row)| {
+        let screen_y = -(2.0 * y as f32) / height + 1.0; // Transform to normalized device coordinates
+        let screen_y = screen_y * perspective_scale; // Scale for perspective
 
-        // Apply color
-        let color = material.diffuse * material.albedo * diffuse + material.diffuse * specular;
+        row.iter_mut().enumerate().for_each(|(x, pixel)| {
+            let screen_x = (2.0 * x as f32) / width - 1.0; // Transform to normalized device coordinates
+            let screen_x = screen_x * aspect_ratio * perspective_scale; // Scale for aspect ratio
 
-        // Shadow check
-        if is_in_shadow(&closest_intersect, light, objects) {
-            //println!("Object is in shadow");
-            return color * 0.3; // Darken color in shadow
-        }
+            // Construct the ray direction in camera space
+            let ray_direction = Vec3::new(screen_x, screen_y, -1.0).normalize();
 
-        color
-    } else {
-        //println!("No intersection found");
-        Color::new(100, 100, 255) // Background color
-    }
+            // Rotate the ray direction based on the camera's orientation
+            let rotated_direction = camera.basis_change(&ray_direction);
+
+            // Cast the ray from the camera's position in the direction of the rotated ray
+            let pixel_color = cast_ray(&camera.eye, &rotated_direction, objects, daylight, lights, 0);
+            *pixel = pixel_color.to_u32(); // Store the color in the framebuffer
+        });
+    });
 }
 
-fn find_closest_intersect(ray_origin: &Vec3, ray_direction: &Vec3, objects: &[Cube]) -> Option<Intersect> {
-    objects.iter()
-        .filter_map(|object| {
-            let intersect = object.ray_intersect(ray_origin, ray_direction);
-            if intersect.is_some() {
-                //println!("Intersection found: {:?}", intersect);
-            }
-            intersect
-        })
-        .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap())
-}
-
-fn reflect(direction: &Vec3, normal: &Vec3) -> Vec3 {
-    direction - normal * 2.0 * direction.dot(normal)
-}
-
-fn is_in_shadow(intersect: &Intersect, light: &Light, objects: &[Cube]) -> bool {
-    let shadow_origin = intersect.point + intersect.normal * 0.001;
-    let light_dir = (light.position - intersect.point).normalize();
-
-    objects.iter()
-        .filter_map(|object| object.ray_intersect(&shadow_origin, &light_dir))
-        .any(|shadow_intersect| shadow_intersect.distance < (light.position - intersect.point).magnitude())
-}

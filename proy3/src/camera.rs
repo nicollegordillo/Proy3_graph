@@ -1,83 +1,54 @@
-extern crate nalgebra_glm as glm;
-use glm::{Vec3, normalize};
+use std::f32::consts::PI;
+use nalgebra_glm::Vec3;
 
 pub struct Camera {
-    pub eye: Vec3,
-    pub forward: Vec3,
-    pub right: Vec3,
-    pub up: Vec3,
-    pub fov: f32,
-    pub yaw: f32, // Added for yaw
-    pub pitch: f32, // Added for pitch
+    pub eye: Vec3,    // Camera position
+    pub center: Vec3, // Target the camera is looking at
+    pub up: Vec3,     // Up direction of the camera
 }
 
 impl Camera {
-    // Create a new camera with position, look-at target, and up vector
-    pub fn new(eye: Vec3, center: Vec3, up: Vec3) -> Camera {
-        let forward = normalize(&(center - eye));
-        let right = normalize(&glm::cross(&forward, &up));
-        let up = glm::cross(&right, &forward);
-
-        let fov = glm::half_pi::<f32>();
-
-        Camera {
-            eye,
-            forward,
-            right,
-            up,
-            fov,
-            yaw: 0.0, // Initialize yaw
-            pitch: 0.0, // Initialize pitch
-        }
+    // Creates a new camera instance with given eye, center, and up vectors
+    pub fn new(eye: Vec3, center: Vec3, up: Vec3) -> Self {
+        Camera { eye, center, up }
     }
 
-    // Generate a ray for a pixel, given normalized coordinates (u, v)
-    pub fn generate_ray(&self, u: f32, v: f32) -> Vec3 {
-    let aspect_ratio = 1.0;
-    let scale = (self.fov * 0.5).tan();
+    // Transforms a vector to camera's basis
+    pub fn basis_change(&self, vector: &Vec3) -> Vec3 {
+        let forward = (self.center - self.eye).normalize(); // Forward direction
+        let right = forward.cross(&self.up).normalize();    // Right direction
+        let up = right.cross(&forward).normalize();         // Up direction
 
-    let ray_direction = self.forward
-        + self.right * (u * scale * aspect_ratio)
-        + self.up * (v * scale);
-
-    normalize(&ray_direction)  // Ensure the ray direction is normalized
-}
-
-    // Optional: Orbit camera around the scene (for animation)
-    // Update the orbit function to keep the camera at a fixed distance from the center
-pub fn orbit(&mut self, delta_yaw: f32, delta_pitch: f32) {
-    self.yaw += delta_yaw;
-    self.pitch += delta_pitch;
-
-    // Clamp pitch to avoid gimbal lock
-    if self.pitch > std::f32::consts::FRAC_PI_2 - 0.1 {
-        self.pitch = std::f32::consts::FRAC_PI_2 - 0.1;
-    } else if self.pitch < -std::f32::consts::FRAC_PI_2 + 0.1 {
-        self.pitch = -std::f32::consts::FRAC_PI_2 + 0.1;
+        // Transform vector to camera basis and normalize
+        let rotated = vector.x * right + vector.y * up - vector.z * forward;
+        rotated.normalize()
     }
 
-    // Calculate new camera direction
-    let cos_pitch = self.pitch.cos();
-    let sin_pitch = self.pitch.sin();
-    let cos_yaw = self.yaw.cos();
-    let sin_yaw = self.yaw.sin();
+    // Orbits the camera around the center point based on yaw and pitch angles
+    pub fn orbit(&mut self, delta_yaw: f32, delta_pitch: f32) {
+        let radius_vector = self.eye - self.center;
+        let radius = radius_vector.magnitude();  // Distance from eye to center
 
-    self.forward = Vec3::new(
-        cos_pitch * sin_yaw,
-        sin_pitch,
-        cos_pitch * cos_yaw,
-    );
+        // Calculate current yaw and pitch angles
+        let current_yaw = radius_vector.z.atan2(radius_vector.x);
+        let radius_xz = (radius_vector.x * radius_vector.x + radius_vector.z * radius_vector.z).sqrt();
+        let current_pitch = (-radius_vector.y).atan2(radius_xz);
 
-    self.right = normalize(&glm::cross(&self.forward, &self.up));
-    self.up = glm::cross(&self.right, &self.forward);
+        // Apply new yaw and pitch adjustments
+        let new_yaw = (current_yaw + delta_yaw) % (2.0 * PI);
+        let new_pitch = (current_pitch + delta_pitch).clamp(-PI / 2.0 + 0.1, PI / 2.0 - 0.1);
 
-    // Calculate the camera position based on a fixed distance from the center
-    let distance = 10.0; // Distance from the center
-    self.eye = Vec3::new(
-        distance * self.forward.x,
-        distance * self.forward.y,
-        distance * self.forward.z,
-    );
-}
+        // Calculate new camera position (eye)
+        self.eye = self.center + Vec3::new(
+            radius * new_yaw.cos() * new_pitch.cos(),
+            -radius * new_pitch.sin(),
+            radius * new_yaw.sin() * new_pitch.cos(),
+        );
+    }
 
+    // Adjusts the camera's zoom by moving the eye closer or further from the center
+    pub fn zoom(&mut self, zoom_factor: f32) {
+        let direction = (self.center - self.eye).normalize(); // Direction from eye to center
+        self.eye += direction * zoom_factor;                  // Move eye along the direction vector
+    }
 }

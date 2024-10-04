@@ -1,79 +1,138 @@
-use crate::material::Material;
+use nalgebra_glm::{Vec3, dot};
 use crate::ray_intersect::{Intersect, RayIntersect};
-use nalgebra_glm::{Vec3, vec3};
+use crate::material::Material;
 
+/// Structure representing a cube in 3D space.
+#[derive(Clone)]
 pub struct Cube {
-    pub center: Vec3,
-    pub size: f32,
-    pub material: Material,
+    pub min: Vec3,      // Minimum point of the cube (lower-left vertex)
+    pub max: Vec3,      // Maximum point of the cube (upper-right vertex)
+    pub material: Material, // Material of the cube
 }
 
 impl RayIntersect for Cube {
-    fn ray_intersect(&self, ray_origin: &Vec3, ray_direction: &Vec3) -> Option<Intersect> {
-        let half_size = self.size / 2.0;
-        let min = self.center - vec3(half_size, half_size, half_size);
-        let max = self.center + vec3(half_size, half_size, half_size);
+    /// Checks if a ray intersects with the cube and returns intersection details.
+    fn ray_intersect(&self, ray_origin: &Vec3, ray_direction: &Vec3) -> Intersect {
+        let mut tmin = (self.min.x - ray_origin.x) / ray_direction.x;
+        let mut tmax = (self.max.x - ray_origin.x) / ray_direction.x;
 
-        let epsilon = 1e-6;
-        let inv_dir = Vec3::new(1.0 / ray_direction.x, 1.0 / ray_direction.y, 1.0 / ray_direction.z);
-
-
-        // Calculate the potential intersections
-        let t_min = (min - ray_origin).component_mul(&inv_dir);
-        let t_max = (max - ray_origin).component_mul(&inv_dir);
-
-        // Find the largest t_min and smallest t_max
-        let t_near = t_min.x.max(t_min.y).max(t_min.z);
-        let t_far = t_max.x.min(t_max.y).min(t_max.z);
-
-        if t_near > t_far || t_far < 0.0 {
-            return None; // No intersection
+        if tmin > tmax {
+            std::mem::swap(&mut tmin, &mut tmax);
         }
 
-        // Determine hit point and normal
-        let hit_point = ray_origin + ray_direction * t_near;
+        let mut tymin = (self.min.y - ray_origin.y) / ray_direction.y;
+        let mut tymax = (self.max.y - ray_origin.y) / ray_direction.y;
 
-        // Calculate the normal
-        let normal = calculate_normal(&hit_point, &min, &max);
-        //println!("Hit normal: {:?}", normal);
+        if tymin > tymax {
+            std::mem::swap(&mut tymin, &mut tymax);
+        }
 
-        // Debug output
-        //println!("Hit point: {:?}", hit_point);
-        //println!("Normal: {:?}", normal);
+        if (tmin > tymax) || (tymin > tmax) {
+            return Intersect::empty(); // No intersection
+        }
 
-        Some(Intersect {
-            distance: t_near,
-            point: hit_point,
-            normal,
-            material: self.material.clone(),
-            u: 0.0,
-            v: 0.0,
-        })
+        if tymin > tmin {
+            tmin = tymin;
+        }
+
+        if tymax < tmax {
+            tmax = tymax;
+        }
+
+        let mut tzmin = (self.min.z - ray_origin.z) / ray_direction.z;
+        let mut tzmax = (self.max.z - ray_origin.z) / ray_direction.z;
+
+        if tzmin > tzmax {
+            std::mem::swap(&mut tzmin, &mut tzmax);
+        }
+
+        if (tmin > tzmax) || (tzmin > tmax) {
+            return Intersect::empty(); // No intersection
+        }
+
+        if tzmin > tmin {
+            tmin = tzmin;
+        }
+
+        if tzmax < tmax {
+            tmax = tzmax;
+        }
+
+        // If tmin is positive, there's an intersection in the direction of the ray
+        if tmin > 0.0 {
+            let point = ray_origin + ray_direction * tmin;
+            let normal = self.calculate_normal(&point); // Calculate the normal at the intersection
+            let distance = tmin;
+
+            // Calculate UV coordinates
+            let (u, v) = self.calculate_uv(&point);
+            
+            return Intersect::new(point, normal, distance, self.material.clone(), (u, v));
+        }
+
+        Intersect::empty() // No valid intersection
     }
 }
 
+impl Cube {
+    /// Calculates the normal at the intersection point.
+    fn calculate_normal(&self, point: &Vec3) -> Vec3 {
+        let epsilon = 1e-4; // Small value for precision
 
-fn calculate_normal(hit_point: &Vec3, min: &Vec3, max: &Vec3) -> Vec3 {
-    let center = (min + max) * 0.5;
-    let diff = hit_point - center;
+        if (point.x - self.min.x).abs() < epsilon {
+            return Vec3::new(-1.0, 0.0, 0.0); // Left face
+        } else if (point.x - self.max.x).abs() < epsilon {
+            return Vec3::new(1.0, 0.0, 0.0); // Right face
+        } else if (point.y - self.min.y).abs() < epsilon {
+            return Vec3::new(0.0, -1.0, 0.0); // Bottom face
+        } else if (point.y - self.max.y).abs() < epsilon {
+            return Vec3::new(0.0, 1.0, 0.0); // Top face
+        } else if (point.z - self.min.z).abs() < epsilon {
+            return Vec3::new(0.0, 0.0, -1.0); // Back face
+        } else if (point.z - self.max.z).abs() < epsilon {
+            return Vec3::new(0.0, 0.0, 1.0); // Front face
+        }
 
-    if diff.x.abs() > diff.y.abs() && diff.x.abs() > diff.z.abs() {
-        if diff.x > 0.0 {
-            vec3(1.0, 0.0, 0.0)
+        Vec3::new(0.0, 0.0, 0.0) // Default normal if no face matches
+    }
+
+    /// Calculates the UV texture coordinates at the intersection point.
+    fn calculate_uv(&self, point: &Vec3) -> (f32, f32) {
+        let epsilon = 1e-4;
+
+        if (point.x - self.min.x).abs() < epsilon {
+            // Left face (negative X axis)
+            let u = (point.z - self.min.z) / (self.max.z - self.min.z);
+            let v = (self.max.y - point.y) / (self.max.y - self.min.y); 
+            return (u, v);
+        } else if (point.x - self.max.x).abs() < epsilon {
+            // Right face (positive X axis)
+            let u = (point.z - self.min.z) / (self.max.z - self.min.z);
+            let v = (self.max.y - point.y) / (self.max.y - self.min.y); 
+            return (u, v);
+        } else if (point.y - self.min.y).abs() < epsilon {
+            // Bottom face (negative Y axis)
+            let u = (point.x - self.min.x) / (self.max.x - self.min.x);
+            let v = (point.z - self.min.z) / (self.max.z - self.min.z);
+            return (u, v);
+        } else if (point.y - self.max.y).abs() < epsilon {
+            // Top face (positive Y axis)
+            let u = (point.x - self.min.x) / (self.max.x - self.min.x);
+            let v = (point.z - self.min.z) / (self.max.z - self.min.z);
+            return (u, v);
+        } else if (point.z - self.min.z).abs() < epsilon {
+            // Back face (negative Z axis)
+            let u = (self.max.x - point.x) / (self.max.x - self.min.x);
+            let v = (self.max.y - point.y) / (self.max.y - self.min.y);
+            return (u, v);
         } else {
-            vec3(-1.0, 0.0, 0.0)
+            // Front face (positive Z axis)
+            let u = (point.x - self.min.x) / (self.max.x - self.min.x);
+            let v = (self.max.y - point.y) / (self.max.y - self.min.y);
+            return (u, v);
         }
-    } else if diff.y.abs() > diff.x.abs() && diff.y.abs() > diff.z.abs() {
-        if diff.y > 0.0 {
-            vec3(0.0, 1.0, 0.0)
-        } else {
-            vec3(0.0, -1.0, 0.0)
-        }
-    } else {
-        if diff.z > 0.0 {
-            vec3(0.0, 0.0, 1.0)
-        } else {
-            vec3(0.0, 0.0, -1.0)
-        }
+
+        (0.0, 0.0) // Default UV if no face is matched
     }
 }
+
