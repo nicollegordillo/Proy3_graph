@@ -6,9 +6,18 @@ use std::{f32::consts::PI};
 use rayon::prelude::*;
 use crate::cast_ray;
 use nalgebra_glm::Vec3;
+use std::sync::Arc;
+use crate::Texture;
 
 /// Renders the scene to the framebuffer.
-pub fn render(framebuffer: &mut Framebuffer, objects: &[Cube], camera: &Camera, lights: &[Light], daylight: &Light) {
+pub fn render(
+    framebuffer: &mut Framebuffer, 
+    objects: &[Cube], 
+    camera: &Camera, 
+    lights: &[Light], 
+    daylight: &Light, 
+    textures: &[Arc<Texture>]  // Added textures argument
+) {
     let width = framebuffer.width as f32;
     let height = framebuffer.height as f32;
     let aspect_ratio = width / height;
@@ -30,9 +39,10 @@ pub fn render(framebuffer: &mut Framebuffer, objects: &[Cube], camera: &Camera, 
             let rotated_direction = camera.basis_change(&ray_direction);
 
             // Cast the ray from the camera's position in the direction of the rotated ray
-            let pixel_color = cast_ray(&camera.eye, &rotated_direction, objects, daylight, lights, 0);
+            let pixel_color = cast_ray(&camera.eye, &rotated_direction, objects, daylight, lights, textures, 0);  // Pass textures here
             *pixel = pixel_color.to_u32(); // Store the color in the framebuffer
         });
     });
 }
+
 

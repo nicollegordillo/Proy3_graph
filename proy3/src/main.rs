@@ -59,6 +59,21 @@ fn main() {
 
     framebuffer.set_background_color(Color::new(179, 179, 179));
 
+    let texture_paths = vec![
+        "./src/imagenes/ice.webp",
+        "./src/imagenes/Birch.webp",
+        "./src/imagenes/Flower.webp",
+        "./src/imagenes/Furnace_front.png",
+        "./src/imagenes/Snow_top.webp",
+        "./src/imagenes/Furnace_side.webp",
+        "./src/imagenes/Furnace_top.webp",
+    ];
+
+    // Load textures from paths
+    let textures: Vec<Arc<Texture>> = texture_paths
+        .iter()
+        .map(|path| Arc::new(Texture::new(path)))
+        .collect();
     
     let ice = Material::new_with_texture(
         30.0,
@@ -271,7 +286,8 @@ fn main() {
             &objects,
             &mut camera,
             &lights,
-            &daylight
+            &daylight,
+            &textures
         );
 
         window

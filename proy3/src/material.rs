@@ -4,18 +4,6 @@ use std::sync::Arc;
 use crate::color::Color;
 use crate::texture::Texture;
 
-// Initializing static textures
-static TEXTURES: Lazy<Vec<Arc<Texture>>> = Lazy::new(|| {
-    vec![
-        Arc::new(Texture::new("./src/imagenes/ice.webp")),
-        Arc::new(Texture::new("./src/imagenes/Birch.webp")),
-        Arc::new(Texture::new("./src/imagenes/Flower.webp")),
-        Arc::new(Texture::new("./src/imagenes/Furnace_front.png")),
-        Arc::new(Texture::new("./src/imagenes/Snow_top.webp")),
-        Arc::new(Texture::new("./src/imagenes/Furnace_side.webp")),
-        Arc::new(Texture::new("./src/imagenes/Furnace_top.webp")),
-    ]
-});
 
 #[derive(Debug, Clone)]
 pub enum TextureType {
@@ -94,14 +82,14 @@ impl Material {
     }
 
     // Get the color of the active texture
-    pub fn get_diffuse_color(&self, u: f32, v: f32) -> Color {
+    pub fn get_diffuse_color(&self, textures: &[Arc<Texture>], u: f32, v: f32) -> Color {
         if self.has_texture {
-            let texture = &TEXTURES[self.texture_index]; // Use texture by index
+            let texture = &textures[self.texture_index];
             let x = (u * (texture.width as f32 - 1.0)) as usize;
             let y = ((1.0 - v) * (texture.height as f32 - 1.0)) as usize;
             return texture.get_color(x, y);
         }
-        self.diffuse // Fallback to diffuse color if no texture
+        self.diffuse
     }
 
     pub fn black() -> Self {

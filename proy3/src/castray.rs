@@ -1,6 +1,7 @@
 use nalgebra_glm::Vec3;
 use std::f32::INFINITY;
-use crate::{Intersect, Light, Cube, Color, ray_intersect::RayIntersect};
+use crate::{Intersect, Light, Cube, Color, ray_intersect::RayIntersect, Texture};
+use std::sync::Arc;
 
 const ORIGIN_BIAS: f32 = 1e-4;
 
@@ -51,6 +52,7 @@ pub fn cast_ray(
     objects: &[Cube], 
     daylight: &Light, 
     other_lights: &[Light], 
+    textures: &[Arc<Texture>],  // Added textures array here
     depth: u32
 ) -> Color {
     if depth > 3 {
@@ -80,7 +82,10 @@ pub fn cast_ray(
         let light_intensity = light.intensity * (1.0 - shadow_intensity);
         
         let diffuse_intensity = intersect.normal.dot(&light_dir).max(0.0);
-        let diffuse_color = intersect.material.get_diffuse_color(intersect.uv.0, intersect.uv.1);
+        
+        // Now passing the `textures` array to get the diffuse color from the texture
+        let diffuse_color = intersect.material.get_diffuse_color(textures, intersect.uv.0, intersect.uv.1);
+        
         let diffuse = ((light.color * 0.09) + diffuse_color) * intersect.material.albedo[0] * diffuse_intensity * light_intensity;
 
         let specular_intensity = view_dir.dot(&reflect_dir).max(0.0).powf(intersect.material.spec);
@@ -101,14 +106,14 @@ pub fn cast_ray(
     if reflectivity > 0.0 {
         let reflect_dir = reflect(&ray_direction, &intersect.normal).normalize();
         let reflect_origin = intersect.point + intersect.normal * 0.001;
-        reflect_color = cast_ray(&reflect_origin, &reflect_dir, objects, daylight, other_lights, depth + 1);
+        reflect_color = cast_ray(&reflect_origin, &reflect_dir, objects, daylight, other_lights, textures, depth + 1);  // Added textures
     }
 
     let mut refract_color = Color::black();
     if transparency > 0.0 {
         let refract_dir = refract(&ray_direction, &intersect.normal, intersect.material.refraction_index).normalize();
         let refract_origin = offset_origin(&intersect, &refract_dir);
-        refract_color = cast_ray(&refract_origin, &refract_dir, objects, daylight, other_lights, depth + 1);
+        refract_color = cast_ray(&refract_origin, &refract_dir, objects, daylight, other_lights, textures, depth + 1);  // Added textures
     }
 
     total_light * (1.0 - reflectivity - transparency) + (reflect_color * reflectivity) + (refract_color * transparency)
@@ -123,6 +128,7 @@ fn calculate_background_color(daylight: &Light) -> Color {
         ((base_blue.b as f32 * intensity_factor).min(255.0)) as i32,
     )
 }
+
 
 
 
