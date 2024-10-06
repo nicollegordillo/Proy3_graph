@@ -29,14 +29,6 @@ impl Color {
         value.clamp(0, 255) as u8
     }
 
-    pub fn add(&self, other: &Color) -> Color {
-        *self + *other
-    }
-
-    pub fn multiply(&self, scalar: f32) -> Color {
-        *self * scalar
-    }
-
     pub const fn black() -> Self {
         Color { r: 0, g: 0, b: 0 }
     }

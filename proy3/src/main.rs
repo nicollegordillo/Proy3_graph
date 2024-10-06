@@ -1,3 +1,14 @@
+mod framebuffer;
+mod color;
+mod ray_intersect;
+mod material;
+mod camera;
+mod object;
+mod light;
+mod castray;
+mod texture;
+mod render;
+
 use material::{Material, TextureType};
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::Vec3;
@@ -5,38 +16,15 @@ use std::{f32::consts::PI, time::Duration};
 use rayon::prelude::*;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
-
-
-mod framebuffer;
 use framebuffer::Framebuffer;
-
-mod color;
 use color::Color;
-
-mod ray_intersect;
 use ray_intersect::Intersect;
-
-mod material;
-
-mod camera;
 use camera::Camera;
-
-mod object;
 use object::Cube;
-
-mod light;
 use light::Light;
-
-mod castray;
 use castray::cast_ray;
-
-mod texture;
 use texture::Texture;
-
-mod render;
 use render::render;
-
-
 
 fn main() {
     let width = 800;
@@ -48,7 +36,7 @@ fn main() {
 
    
     let mut window = Window::new(
-        "Raytracing",
+        "Proy2-Raytracing",
         width,
         height,
         WindowOptions::default(),
@@ -76,80 +64,80 @@ fn main() {
         .collect();
     
     let ice = Material::new_with_texture(
-        30.0,
-        [0.6, 0.2],
-        0.0,
-        0.0,
-        0.0,
+        50.0,
+        [0.9, 0.1],
+        0.3,
+        0.2,
+        1.31,
         TextureType::Ice
     );
 
     let birch = Material::new_with_texture(
-        50.0,
-        [0.6, 0.5],
+        5.0,
+        [0.7, 0.0],
+        0.1,
         0.0,
-        0.0,
-        0.0,
+        1.0,
         TextureType::Birch
     );
 
     let flower = Material::new_with_texture(
-        40.0,
-        [0.6, 0.3],
-        0.0,
-        0.0,
-        0.0,
+        20.0,
+        [0.6, 0.2],
+        0.2,
+        0.05,
+        1.05,
         TextureType::Flower
     );
 
-    let magma = Material::new_with_texture(
-        100.0,
-        [0.7, 0.7],
-        0.1,
+    let snow_top = Material::new_with_texture(
+        10.0,
+        [1.0, 0.0],
+        0.05,
         0.0,
-        0.0,
+        1.0,
         TextureType::Snow_top
     );
 
     let ffront = Material::new_with_texture(
         100.0,
-        [0.7, 0.9],
-        0.1,
-        0.2,
-        0.3,
+        [0.4, 0.0],
+        0.05,
+        0.0,
+        1.0,
         TextureType::Ffront
     );
 
     let fside = Material::new_with_texture(
         100.0,
-        [0.7, 0.9],
-        0.1,
-        0.2,
-        0.3,
+        [0.4, 0.0],
+        0.05,
+        0.0,
+        1.0,
         TextureType::Fside
     );
 
     let ftop = Material::new_with_texture(
         100.0,
-        [0.7, 0.9],
-        0.1,
-        0.2,
-        0.3,
+        [0.4, 0.0],
+        0.05,
+        0.0,
+        1.0,
         TextureType::Ftop
     );
 
-    let sand = Material::new_with_texture(
-        30.0,
-        [0.8, 0.1],
+    let snow = Material::new_with_texture(
+        10.0,
+        [1.0, 0.0],
+        0.05,
         0.0,
-        0.0,
-        0.0,
+        1.0,
         TextureType::Snow_top
     );
     let cube_size = 0.5;  // Tamaño del cubo
     let mut objects = Vec::new();
-    let lights = vec![
-      Light::new(Vec3::new(1.2*cube_size , -0.9, 4.4* cube_size), Color::new(220, 91, 2), 0.5), // Adjust Y to be higher*/
+    let furnacelight = vec![
+      Light::new(Vec3::new(2.0*cube_size , -0.93, 5.4* cube_size), Color::new(220, 91, 2), 0.5), // Adjust Y to be higher
     ];
     
 
@@ -158,7 +146,7 @@ fn main() {
             objects.push(Cube {
                 min: Vec3::new((i) as f32 * cube_size, -1.5, j as f32 * cube_size), // Vértice inferior izquierdo
                 max: Vec3::new((i) as f32 * cube_size + cube_size, -1.0, j as f32 * cube_size + cube_size), // Vértice superior derecho
-                material: sand.clone(),
+                material: snow.clone(),
             });
         }
     }
@@ -167,7 +155,7 @@ fn main() {
             objects.push(Cube {
                 min: Vec3::new((i + 2) as f32 * cube_size, -1.5, (j + 3) as f32 * cube_size), // Vértice inferior izquierdo
                 max: Vec3::new((i + 2) as f32 * cube_size + cube_size, -1.0, (j + 3) as f32 * cube_size + cube_size), // Vértice superior derecho
-                material: sand.clone(),
+                material: snow.clone(),
             });
         }
     }
@@ -233,7 +221,7 @@ fn main() {
         Vec3::new(0.0,1.0,0.0), 
     );
 
-    let mut daylight = Light::new(
+    let mut mainlight = Light::new(
         Vec3::new(4.0, 4.0, 7.0),
         Color::new(229, 156, 19),
         0.2, // Initial intensity
@@ -272,10 +260,10 @@ fn main() {
 
         // Adjust light intensity with key presses
         if window.is_key_down(Key::Right) {
-            daylight.set_intensity((daylight.intensity + 0.1).min(2.0)); // Increase intensity
+            mainlight.set_intensity((mainlight.intensity + 0.1).min(2.0)); // Increase intensity
         }
         if window.is_key_down(Key::Left) {
-            daylight.set_intensity((daylight.intensity - 0.1).max(0.0)); // Decrease intensity
+            mainlight.set_intensity((mainlight.intensity - 0.1).max(0.0)); // Decrease intensity
         }
 
 
@@ -285,8 +273,8 @@ fn main() {
             &mut framebuffer,
             &objects,
             &mut camera,
-            &lights,
-            &daylight,
+            &furnacelight,
+            &mainlight,
             &textures
         );
 

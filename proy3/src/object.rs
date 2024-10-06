@@ -1,4 +1,4 @@
-use nalgebra_glm::{Vec3, dot};
+use nalgebra_glm::Vec3;
 use crate::ray_intersect::{Intersect, RayIntersect};
 use crate::material::Material;
 
