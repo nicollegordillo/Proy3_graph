@@ -137,7 +137,7 @@ fn main() {
     let cube_size = 0.5;  // Tamaño del cubo
     let mut objects = Vec::new();
     let furnacelight = vec![
-      Light::new(Vec3::new(2.0*cube_size , -0.93, 5.4* cube_size), Color::new(220, 91, 2), 0.5), // Adjust Y to be higher
+      Light::new(Vec3::new(2.0*cube_size , -0.95, 5.4* cube_size), Color::new(220, 91, 2), 0.5), // Adjust Y to be higher
     ];
     
 
@@ -222,7 +222,7 @@ fn main() {
     );
 
     let mut mainlight = Light::new(
-        Vec3::new(4.0, 4.0, 7.0),
+        Vec3::new(4.0, 5.0, 7.0),
         Color::new(229, 156, 19),
         0.2, // Initial intensity
     );
@@ -230,7 +230,7 @@ fn main() {
     
 
     let rotaton_speed = PI/50.0;
-    let zoom_speed = 0.1; 
+    let zoom_speed = 0.15; 
 
     // Bucle principal
     while window.is_open() {
